@@ -19,16 +19,17 @@ Template:
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 
 #List of Tasks
 tasks = []
 
 #Triggers when Add Task Button is pressed
-def add_task(): 
+def add_task(): #Adds task to the list "tasks"
     task_text = task_entry.get()
 
     #Checks if task_entry has text
-    if task_text.strip(): #If has text
+    if task_text.strip(): 
         #Add to the Tasks List
         tasks.append(task_text.strip())
 
@@ -41,9 +42,22 @@ def add_task():
     else: #If has no text
         result_label.config(text="Please enter a task first!", fg="red")
 
+#Triggered when Show All Tasks is pressed
+def show_all_tasks(): #Shows all tasks in a pop-up
+    #Makes sure the list has 1 or more tasks
+    if tasks:
+        task_list = "\n".join([f"{i+1}. {task}" for i,task in enumerate(tasks)])
+        messagebox.showinfo("All Tasks", f"Your Task:\n\n {task_list}")
+    else:
+        messagebox.showinfo("All Tasks", "You have no tasks yet!")
+
+
 #Creating a Window
 window = tk.Tk()
 window.title("My First Todo App")
 window.geometry("600x400")
+
+
+
 
 window.mainloop()
