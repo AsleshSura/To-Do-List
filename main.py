@@ -54,10 +54,45 @@ def show_all_tasks(): #Shows all tasks in a pop-up
 
 #Creating a Window
 window = tk.Tk()
-window.title("My First Todo App")
+window.title("My To-Do App")
 window.geometry("600x400")
+window.configure(bg="white")
 
 
+title_label = tk.Label(window, text="My To-Do List", font=("Arial", 12), bg="white")
+title_label.pack(pady=20)
+
+#Input Frame
+input_frame = tk.Frame(window, bg="white")
+input_frame.pack(pady=20)
+
+#Input Box for new tasks
+tk.Label(input_frame, text="Enter new task:", font=("Arial", 12), bg="white").pack()
+task_entry = tk.Entry(input_frame, font=("Arial", 12), width=20, relief="solid", bd=1)
+task_entry.pack(pady=10)
+
+#Buttons Frame
+button_frame = tk.Frame(window, bg="white")
+button_frame.pack(pady=10)
+
+#Add Task Button Core
+add_button = tk.Button(button_frame, text="Add Tasks", command=add_task, bg="lightgreen", font=("Arial", 12), width=12)
+add_button.pack(side=tk.LEFT, padx=5)
+
+#Show All Task Button
+show_all_button = tk.Button(button_frame, text="Show All Tasks", command=show_all_tasks, bg="lightblue", font=("Arial", 12), width=12)
+show_all_button.pack(side=tk.LEFT, padx=5)
+
+#Result Label
+result_label = tk.Label(window, text="No tasks yet - add one above!", font=("Arial", 12), bg="white", fg="gray")
+result_label.pack(pady=20)
+
+#Instructions?
+instructions = tk.Label(window, text="To add a new task: Type a task and click 'Add Task'\nTo see all your tasks: Click 'Show All Tasks'", font=("Arial", 12), bg="white", fg="gray", wraplength=400)
+instructions.pack(pady=10)
+
+#Let Enter key add tasks
+task_entry.bind("<Return>", lambda event: add_task())
 
 
 window.mainloop()
