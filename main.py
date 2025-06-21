@@ -20,22 +20,30 @@ Template:
 import tkinter as tk
 from tkinter import ttk
 
+#List of Tasks
+tasks = []
+
+#Triggers when Add Task Button is pressed
+def add_task(): 
+    task_text = task_entry.get()
+
+    #Checks if task_entry has text
+    if task_text.strip(): #If has text
+        #Add to the Tasks List
+        tasks.append(task_text.strip())
+
+        #Removes the text from the field
+        task_entry.delete(0, tk.END)
+
+        #Changes the text in the Result Label
+        result_label.config(text=f"Added: '{task_text}' | Total Tasks: {len(tasks)}", fg="green")
+
+    else: #If has no text
+        result_label.config(text="Please enter a task first!", fg="red")
+
 #Creating a Window
 window = tk.Tk()
 window.title("My First Todo App")
 window.geometry("600x400")
 
-#Label 1
-welcome_label = tk.Label(window, text="Welcome to my To-Do App!", font=("Arial", 20))
-welcome_label.pack(pady=20)
-
-#Button 1
-test_button = tk.Button(window, text="Click Me!", bg="lightblue", font=("Arial", 12))
-test_button.pack(pady=10)
-
-#Instructions?
-instruct_label = tk.Label(window, text="Instruction: Click the Button Pls", font=("Arial", 12))
-instruct_label.pack(pady=5)
-
-#Window Open
 window.mainloop()
