@@ -415,6 +415,29 @@ def remove_category():
     except (ValueError, TypeError):
         result_label.configure(text="Please enter a valid number!", text_color="red")
 
+def reset_all():
+    if messagebox.askyesno("Reset Everything", "Are you sure you want to reset everything?\nThis will delete all tasks and custom categories!"):
+        # Clear tasks
+        tasks.clear()
+        save_tasks()
+        
+        # Reset categories to default
+        categories.clear()
+        categories.append("General")
+        save_categories()
+        
+        # Reset UI elements
+        category_menu.configure(values=categories)
+        category_var.set("General")
+        task_entry.delete(0, "end")
+        due_date_picker.delete(0, "end")
+        hour_var.set("-")
+        min_var.set("-")
+        ampm_var.set("-")
+        
+        update_task_display()
+        result_label.configure(text="Everything has been reset!", text_color="blue")
+
 #Creating a Window
 window = ctk.CTk()
 window.title("My To-Do App")
@@ -522,17 +545,24 @@ remove_category_btn = ctk.CTkButton(
 )
 remove_category_btn.pack(side="left", padx=5)
 
-#Buttons Frame
 button_frame = ctk.CTkFrame(input_frame)
 button_frame.pack(pady=5)
 
-#Add Task Button
 add_button = ctk.CTkButton(button_frame, text="Add Tasks", command=add_task, fg_color="green", hover_color="darkgreen", width=120)
 add_button.pack(side="left", padx=5)
 
-#Clear Tasks Button
 clear_button = ctk.CTkButton(button_frame, text="Clear All Tasks", command=clear_all_tasks, fg_color="red", hover_color="darkred", width=120)
 clear_button.pack(side="left", padx=5)
+
+reset_button = ctk.CTkButton(
+    button_frame, 
+    text="Reset All", 
+    command=reset_all, 
+    fg_color="purple", 
+    hover_color="darkmagenta", 
+    width=120
+)
+reset_button.pack(side="left", padx=5)
 
 #Result Label
 result_label = ctk.CTkLabel(window, text="Enter a task above and click 'Add Task'", font=("Arial", 10))
