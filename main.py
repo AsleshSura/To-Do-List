@@ -112,12 +112,7 @@ def update_task_display():
 
             task_time = task["timestamp"].split()[1]
             task_text = f"{task_time} - {task["text"]}"
-            if task.get("due_date"):
-                if " " in task["due_date"]:
-                    date_part, time_part = task["due_date"].split()
-                    task_text += f" (Due: {date_part} at {time_part})"
-                else:
-                    task_text += f" Due: {task["due_date"]}"
+            
             if task["priority"]:
                 task_text = "★ " + task_text
             if task["completed"]:
@@ -130,6 +125,24 @@ def update_task_display():
                 anchor="w", 
                 text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
+
+            due_text = ""
+            if task.get("due_date"):
+                if " " in task["due_date"]:
+                    date_part, time_part = task["due_date"].split()
+                    due_text = f"(Due: {date_part} at {time_part})"
+                else:
+                    due_text += f"Due: {task["due_date"]}"
+
+            due_label = ctk.CTkLabel(
+                task_frame,
+                text= due_text,
+                font=("Arial", 11),
+                anchor="e",
+                text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
+            
+            due_label.pack(side="left", padx =5, pady=2)
+
 
             edit_btn = ctk.CTkButton(
                 task_frame,
@@ -165,13 +178,17 @@ def add_task():
             date_str = due_date_picker.get_date().strftime('%m-%d-%y')
 
             if hour_var.get() !="12" or ampm_var.get() != "PM":
-                hour = int(hour_var.get())                
+                hour = int(hour_var.get())
+                minute = int(min_var.get())
+                               
                 if ampm_var.get() == "PM" and hour != 12:
                     hour += 12
                 elif ampm_var.get() == "AM" and hour == 12:
                     hour = 0
-            due_date = f"{selected_date.strftime('%m-%d-%y')} {hour:02d}:00"
-        
+                due_date = f"{date_str} {hour:02d}:{minute:02d}"
+            else:
+                due_date = date_str
+
         tasks.append({
             "text": task_text.strip(),
             "completed": False,
@@ -184,6 +201,7 @@ def add_task():
         task_entry.delete(0, len(task_text))
         due_date_picker.delete(0, "end")
         hour_var.set("-")
+        min_var.set("-")
         ampm_var.set("-")
 
         update_task_display()
@@ -271,11 +289,14 @@ def edit_task(index):
             if task.get("due_date"):
                 date_part = task["due_date"].split()[0]
                 hour = int(hour_var.get())
+                minute = int(min_var.get())
+
                 if ampm_var.get() == "PM" and hour != 12:
                     hour += 12
                 elif ampm_var.get() == "AM" and hour == 12:
                     hour = 0
-                task["due_date"] = f"{date_part} {hour:02d}:00"
+                task["due_date"] = f"{date_part} {hour:02d}:{minute:02d}"
+            
             save_tasks()
             update_task_display()
             edit_window.destroy()
@@ -296,7 +317,7 @@ def edit_task(index):
 #Creating a Window
 window = ctk.CTk()
 window.title("My To-Do App")
-window.geometry("600x500")
+window.geometry("600x600")
 
 title_label = ctk.CTkLabel(window, text="My To-Do List", font=("Arial", 24, "bold"))
 title_label.pack(pady=10)
@@ -344,6 +365,15 @@ hour_menu = ctk.CTkOptionMenu(
 )
 hour_menu.pack(side="left")
 
+min_var = ctk.StringVar(value="-")
+min_menu = ctk.CTkOptionMenu(
+    due_time_frame,
+    values=["-"] + [f"{i:02d}" for i in range(0,60,5)],
+    variable=min_var,
+    width=60
+)
+min_menu.pack(side="left", padx=5)
+
 ampm_var = ctk.StringVar(value="-")
 ampm_menu = ctk.CTkOptionMenu(
     due_time_frame,
@@ -386,7 +416,7 @@ instructions = ctk.CTkLabel(
          "Click 'Delete' to remove a task, 'Clear All' to remove all tasks", 
     font=("Arial", 9)
 )
-instructions.pack(pady=5)
+instructions.pack(pady=10)
 
 #Let Enter key add tasks
 task_entry.bind("<Return>", lambda event: add_task())
