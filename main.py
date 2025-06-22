@@ -20,6 +20,7 @@ Template:
 import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
+from tkcalendar import DateEntry
 
 #File TaskList
 
@@ -29,12 +30,13 @@ def load_tasks():
             tasks = []
             for line in file:
                 if line.strip():
-                    text, completed, timestamp, priority = line.strip().split("||")
+                    text, completed, timestamp, priority, due_date = line.strip().split("||")
                     tasks.append({
                         "text": text, 
                         "completed": completed == "True", 
                         "timestamp": timestamp,
-                        "priority": priority == "True"
+                        "priority": priority == "True",
+                        "due_date": due_date if due_date != "None" else None
                         })
             return tasks
     except FileNotFoundError:
@@ -43,7 +45,8 @@ def load_tasks():
 def save_tasks():
     with open("tasks.txt", "w") as file:
         for task in tasks:
-            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}\n")
+            due_date = task.get("due_date", "None")
+            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}||{due_date}\n")
 
 #List of Tasks
 tasks = load_tasks()
@@ -109,6 +112,8 @@ def update_task_display():
 
             task_time = task["timestamp"].split()[1]
             task_text = f"{task_time} - {task["text"]}"
+            if task.get("due_date"):
+                task_text += f" (Due: {task["due_date"]})"
             if task["priority"]:
                 task_text = "★ " + task_text
             if task["completed"]:
@@ -116,7 +121,7 @@ def update_task_display():
 
             task_label = ctk.CTkLabel(
                 task_frame, 
-                text=f"{i}. {task["text"]}", 
+                text=task_text, 
                 font=("Arial", 11), 
                 anchor="w", 
                 text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
@@ -144,27 +149,37 @@ def update_task_display():
             delete_btn.pack(side="right", padx=5, pady=2)
 
 
-def add_task(): #Adds task to the list "tasks"
+def add_task():
     task_text = task_entry.get()
 
     #Checks if task_entry has text
     if task_text.strip(): 
         #Add to the Tasks List
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        due_date = None
+        if due_date_picker.get() != "":
+            due_date = due_date_picker.get_date().strftime("%m-%d-%y")
         tasks.append({
             "text": task_text.strip(),
             "completed": False,
             "timestamp": timestamp,
-            "priority": False
+            "priority": False,
+            "due_date": due_date
             })
         save_tasks()
         #Removes the text from the field
         task_entry.delete(0, len(task_text))
+        due_date_picker.delete(0, "end")
 
         update_task_display()
 
         #Changes the text in the Result Label
-        result_label.configure(text=f"Added: '{task_text}' | Total Tasks: {len(tasks)}", text_color="green")
+        result_text = f"Added: '{task_text}'"
+        if due_date:
+            result_text += f" | Due: {due_date}"
+        result_text += " | Total Tasks: {len(tasks)}"
+
+        result_label.configure(text=result_text, text_color="green")
 
     else: #If has no text
         result_label.configure(text="Please enter a task first!", text_color="red")
@@ -248,9 +263,31 @@ input_frame = ctk.CTkFrame(window)
 input_frame.pack(fill="x", padx=10, pady=5)
 
 #Input Box for new tasks
-ctk.CTkLabel(input_frame, text="Add a new task:", font=("Arial", 12, "bold")).pack(pady=5)
+task_label = ctk.CTkLabel(input_frame, text="Add a new task:", font=("Arial", 12, "bold"))
+task_label.pack(pady=5)
+
 task_entry = ctk.CTkEntry(input_frame, font=("Arial", 12), width=300)
 task_entry.pack(pady=5)
+
+due_date_frame = ctk.CTkFrame(input_frame)
+due_date_frame.pack(pady=5)
+
+due_date_label = ctk.CTkLabel(due_date_frame, text="(Optional) Due Date:", font=("Arial", 10))
+due_date_label.pack(side="left", padx=5)
+
+due_date_picker = DateEntry(
+    due_date_frame,
+    width=12,
+    background="darkblue",
+    foreground="white",
+    borderwidth=2,
+    font=("Arial", 10),
+    date_pattern="mm-dd-yy",
+    showweeknumbers=False
+)
+due_date_picker.delete(0,"end")
+
+due_date_picker.pack(side="left", padx=5)
 
 #Buttons Frame
 button_frame = ctk.CTkFrame(input_frame)
@@ -278,7 +315,13 @@ scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
 task_display_frame = scrollable_frame
 
-instructions = ctk.CTkLabel(window, text="Type a task and press Enter or click 'Add Task' \nClick 'Delete' next to any task to remove it\nUse 'Clear All' to remove all tasks", font=("Arial", 9))
+instructions = ctk.CTkLabel(
+    window, 
+    text="Type a task, set due date (optional) and click 'Add Task'\n" +
+         "Click '★' to toggle priority, '✓' to mark complete\n" +
+         "Click 'Delete' to remove a task, 'Clear All' to remove all tasks", 
+    font=("Arial", 9)
+)
 instructions.pack(pady=5)
 
 #Let Enter key add tasks
