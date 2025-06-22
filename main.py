@@ -25,14 +25,19 @@ from tkinter import messagebox
 def load_tasks():
     try:
         with open("tasks.txt", "r") as file:
-            return [line.strip() for line in file if line.strip()]
+            tasks = []
+            for line in file:
+                if line.strip():
+                    text,completed = line.strip().split("||")
+                    tasks.append({"text": text, "completed": completed == "True"})
+            return tasks
     except FileNotFoundError:
         return []
 
 def save_tasks():
     with open("tasks.txt", "w") as file:
         for task in tasks:
-            file.write(f"{task}\n")
+            file.write(f"{task['text']}||{task['completed']}\n")
 
 #List of Tasks
 tasks = load_tasks()
@@ -52,7 +57,14 @@ def update_task_display():
             task_frame = ctk.CTkFrame(task_display_frame)
             task_frame.pack(fill="x", padx=5, pady=2)
 
-            task_label = ctk.CTkLabel(task_frame, text=f"{i}. {task}", font=("Arial", 11), anchor="w")
+            complete_btn = ctk.CTkButton(task_frame, text="✓" if task["completed"] else "o", command=lambda idx=i-1: is_completed(idx), fg_color="green" if task["completed"] else "gray", hover_color="darkgreen" if task["completed"] else "darkgray", width=30, height=25)
+            complete_btn.pack(side="left", padx=5)
+
+            task_text = task["text"]
+            if task["completed"]:
+                task_text = "✓ " + task_text  
+
+            task_label = ctk.CTkLabel(task_frame, text=f"{i}. {task["text"]}", font=("Arial", 11), anchor="w", text_color="gray" if task["completed"] else "white")
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
             delete_btn = ctk.CTkButton(task_frame, text="Delete", command=lambda idx=i-1: delete_task(idx), fg_color="red", hover_color="darkred", width=70, height=25)
@@ -65,7 +77,7 @@ def add_task(): #Adds task to the list "tasks"
     #Checks if task_entry has text
     if task_text.strip(): 
         #Add to the Tasks List
-        tasks.append(task_text.strip())
+        tasks.append({"text": task_text.strip(), "completed": False})
         save_tasks()
         #Removes the text from the field
         task_entry.delete(0, len(task_text))
@@ -84,7 +96,13 @@ def delete_task(index):
         deleted_task = tasks.pop(index)
         save_tasks()
         update_task_display()
-        result_label.configure(text=f"Deleted : '{deleted_task}'", text_color="orange")
+        result_label.configure(text=f"Deleted : '{deleted_task["text"]}'", text_color="orange")
+
+def is_completed(index):
+    if 0 <= index < len(tasks):
+        tasks[index]["completed"] = not tasks[index]["completed"]
+        save_tasks()
+        update_task_display()
 
 def clear_all_tasks():
 
