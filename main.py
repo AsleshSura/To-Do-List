@@ -443,6 +443,46 @@ def reset_all():
         update_task_display()
         result_label.configure(text="Everything has been reset!", text_color="blue")
 
+def search_tasks():
+    search_text = search_entry.get().lower()
+    
+    for widget in task_display_frame.winfo_children():
+        widget.destroy()
+
+    if not tasks:
+        no_tasks_label = ctk.CTkLabel(task_display_frame, text="No tasks found!", font=("Arial", 12))
+        no_tasks_label.pack(pady=20)
+        return
+    
+    # Filter tasks based on search text
+    filtered_tasks = {}
+    for task in tasks:
+        if (search_text in task["text"].lower() or 
+            (task.get("category") and search_text in task["category"].lower()) or
+            (task.get("due_date") and search_text in task["due_date"].lower())):
+            
+            date = task["timestamp"].split()[0]
+            if date not in filtered_tasks:
+                filtered_tasks[date] = []
+            filtered_tasks[date].append(task)
+    
+    if not filtered_tasks:
+        no_results_label = ctk.CTkLabel(
+            task_display_frame, 
+            text="No matching tasks found!", 
+            font=("Arial", 12)
+        )
+        no_results_label.pack(pady=20)
+        return
+
+    # Display filtered tasks grouped by date
+    for date in sorted(filtered_tasks.keys(), reverse=True):
+        # ...rest of the display logic same as update_task_display...
+        date_frame = ctk.CTkFrame(task_display_frame)
+        date_frame.pack(fill="x", padx=5, pady=(10,2))
+        # ...continue with existing display code...
+
+
 #Creating a Window
 window = ctk.CTk()
 window.title("My To-Do App")
@@ -450,6 +490,36 @@ window.geometry("600x600")
 
 title_label = ctk.CTkLabel(window, text="My To-Do List", font=("Arial", 24, "bold"))
 title_label.pack(pady=10)
+
+# Add after title_label.pack():
+search_frame = ctk.CTkFrame(window)
+search_frame.pack(fill="x", padx=10, pady=5)
+
+search_label = ctk.CTkLabel(search_frame, text="Search:", font=("Arial", 12))
+search_label.pack(side="left", padx=5)
+
+search_entry = ctk.CTkEntry(search_frame, font=("Arial", 12), width=200)
+search_entry.pack(side="left", padx=5)
+
+search_btn = ctk.CTkButton(
+    search_frame,
+    text="Search",
+    command=search_tasks,
+    fg_color="blue",
+    hover_color="darkblue",
+    width=70
+)
+search_btn.pack(side="left", padx=5)
+
+clear_search_btn = ctk.CTkButton(
+    search_frame,
+    text="Clear",
+    command=lambda: [search_entry.delete(0, "end"), update_task_display()],
+    fg_color="gray",
+    hover_color="darkgray",
+    width=70
+)
+clear_search_btn.pack(side="left", padx=5)
 
 #Input Frame
 input_frame = ctk.CTkFrame(window)
@@ -612,13 +682,15 @@ instructions = ctk.CTkLabel(
     window, 
     text="Type a task, set due date (optional) and click 'Add Task'\n" +
          "Click '★' to toggle priority, '✓' to mark complete\n" +
-         "Click 'Delete' to remove a task, 'Clear All' to remove all tasks", 
+         "Click 'Delete' to remove a task, 'Clear All' to remove all tasks\n" +
+         "Use the search bar to filter tasks by text, category, or due date",
     font=("Arial", 9)
 )
 instructions.pack(pady=10)
 
 #Let Enter key add tasks
 task_entry.bind("<Return>", lambda event: add_task())
+search_entry.bind("<Return>", lambda event: search_tasks())
 
 update_task_display()
 
