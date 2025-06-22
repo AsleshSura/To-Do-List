@@ -19,6 +19,7 @@ Template:
 
 import customtkinter as ctk
 from tkinter import messagebox
+from datetime import datetime
 
 #File TaskList
 
@@ -28,8 +29,8 @@ def load_tasks():
             tasks = []
             for line in file:
                 if line.strip():
-                    text,completed = line.strip().split("||")
-                    tasks.append({"text": text, "completed": completed == "True"})
+                    text, completed, timestamp = line.strip().split("||")
+                    tasks.append({"text": text, "completed": completed == "True", "timestamp": timestamp})
             return tasks
     except FileNotFoundError:
         return []
@@ -37,12 +38,12 @@ def load_tasks():
 def save_tasks():
     with open("tasks.txt", "w") as file:
         for task in tasks:
-            file.write(f"{task['text']}||{task['completed']}\n")
+            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}\n")
 
 #List of Tasks
 tasks = load_tasks()
 
-ctk.set_appearance_mode("light")
+ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 def update_task_display():
@@ -52,22 +53,62 @@ def update_task_display():
     if not tasks:
         no_tasks_label = ctk.CTkLabel(task_display_frame, text="No tasks yet!", font=("Arial", 12))
         no_tasks_label.pack(pady=20)
-    else:
-        for i, task in enumerate(tasks, 1):
+        return
+    
+    #Group tasks by date
+    tasks_by_date = {}
+    for task in tasks:
+        date = task["timestamp"].split()[0]
+        if date not in tasks_by_date:
+            tasks_by_date[date] = []
+        tasks_by_date[date].append(task)
+    
+    for date in sorted(tasks_by_date.keys(), reverse=True):
+        # Create date header
+        date_frame = ctk.CTkFrame(task_display_frame)
+        date_frame.pack(fill="x", padx=5, pady=(10,2))
+
+        date_obj = datetime.now().strptime(date, "%Y-%m-%d")
+        date_str = date_obj.strftime("%B %d, %Y")
+
+        date_label = ctk.CTkLabel(date_frame, text=date_str, font=("Arial", 12, "bold"), fg_color="red", corner_radius=6)
+        date_label.pack(fill="x", padx=5, pady=5)
+        
+        for i, task in enumerate(tasks_by_date[date], 1):
             task_frame = ctk.CTkFrame(task_display_frame)
             task_frame.pack(fill="x", padx=5, pady=2)
 
-            complete_btn = ctk.CTkButton(task_frame, text="✓" if task["completed"] else "o", command=lambda idx=i-1: is_completed(idx), fg_color="green" if task["completed"] else "gray", hover_color="darkgreen" if task["completed"] else "darkgray", width=30, height=25)
+            complete_btn = ctk.CTkButton(
+                task_frame, 
+                text="✓" if task["completed"] else "o", 
+                command=lambda idx=i-1: is_completed(idx), 
+                fg_color="green" if task["completed"] else "gray", 
+                hover_color="darkgreen" if task["completed"] else "darkgray", 
+                width=30, 
+                height=25)
             complete_btn.pack(side="left", padx=5)
 
-            task_text = task["text"]
+            task_time = task["timestamp"].split()[1]
+            task_text = f"{task_time} - {task["text"]}"
             if task["completed"]:
                 task_text = "✓ " + task_text  
 
-            task_label = ctk.CTkLabel(task_frame, text=f"{i}. {task["text"]}", font=("Arial", 11), anchor="w", text_color="gray" if task["completed"] else "white")
+            task_label = ctk.CTkLabel(
+                task_frame, 
+                text=f"{i}. {task["text"]}", 
+                font=("Arial", 11), 
+                anchor="w", 
+                text_color="gray" if task["completed"] else "white")
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
-            delete_btn = ctk.CTkButton(task_frame, text="Delete", command=lambda idx=i-1: delete_task(idx), fg_color="red", hover_color="darkred", width=70, height=25)
+            delete_btn = ctk.CTkButton(
+            task_frame,
+            text="Delete",
+            command=lambda idx=i-1: delete_task(idx), 
+            fg_color="red", 
+            hover_color="darkred", 
+            width=70, 
+            height=25)
             delete_btn.pack(side="right", padx=5, pady=2)
 
 
@@ -77,7 +118,12 @@ def add_task(): #Adds task to the list "tasks"
     #Checks if task_entry has text
     if task_text.strip(): 
         #Add to the Tasks List
-        tasks.append({"text": task_text.strip(), "completed": False})
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        tasks.append({
+            "text": task_text.strip(),
+            "completed": False,
+            "timestamp": timestamp
+            })
         save_tasks()
         #Removes the text from the field
         task_entry.delete(0, len(task_text))
