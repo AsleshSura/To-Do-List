@@ -196,20 +196,25 @@ def add_task():
         #Add to the Tasks List
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         due_date = None
-        if due_date_picker.get() != "":
-            date_str = due_date_picker.get_date().strftime('%m-%d-%y')
-
-            if hour_var.get() !="12" or ampm_var.get() != "PM":
-                hour = int(hour_var.get())
-                minute = int(min_var.get())
-                               
-                if ampm_var.get() == "PM" and hour != 12:
-                    hour += 12
-                elif ampm_var.get() == "AM" and hour == 12:
-                    hour = 0
-                due_date = f"{date_str} {hour:02d}:{minute:02d}"
-            else:
-                due_date = date_str
+        if due_date_picker.get() != "":  # Only process date if something is selected
+            try:
+                date_str = due_date_picker.get_date().strftime('%m-%d-%y')
+                
+                # Only process time if all time fields are set
+                if all(var.get() != "-" for var in [hour_var, min_var, ampm_var]):
+                    hour = int(hour_var.get())
+                    minute = int(min_var.get())
+                    
+                    if ampm_var.get() == "PM" and hour != 12:
+                        hour += 12
+                    elif ampm_var.get() == "AM" and hour == 12:
+                        hour = 0
+                    due_date = f"{date_str} {hour:02d}:{minute:02d}"
+                else:
+                    due_date = date_str
+            except (ValueError, AttributeError):
+                pass  
+            
         new_category = category_var.get()
         task_dict = {
             "text": task_text.strip(),
@@ -463,6 +468,7 @@ due_date_frame.pack(pady=5)
 due_date_label = ctk.CTkLabel(due_date_frame, text="(Optional) Due Date:", font=("Arial", 10))
 due_date_label.pack(side="left", padx=5)
 
+# Replace the existing due_date_picker with:
 due_date_picker = DateEntry(
     due_date_frame,
     width=12,
@@ -471,11 +477,35 @@ due_date_picker = DateEntry(
     borderwidth=2,
     font=("Arial", 10),
     date_pattern="mm-dd-yy",
-    showweeknumbers=False
+    showweeknumbers=False,
+    selectmode='day',
+    year=datetime.now().year,
+    month=datetime.now().month,
+    day=datetime.now().day,
+    firstweekday='sunday',
+    selectbackground='darkblue',
+    selectforeground='white',
+    normalbackground='gray20',
+    normalforeground='white',
+    weekendbackground='gray30',
+    weekendforeground='white',
+    headersbackground='gray15',
+    headersforeground='white'
 )
 due_date_picker.delete(0,"end")
-
 due_date_picker.pack(side="left", padx=5)
+
+# Add after the due_date_picker.pack():
+clear_date_btn = ctk.CTkButton(
+    due_date_frame,
+    text="×",
+    width=25,
+    height=25,
+    command=lambda: due_date_picker.delete(0, "end"),
+    fg_color="gray30",
+    hover_color="gray40"
+)
+clear_date_btn.pack(side="left", padx=(2, 5))
 
 due_time_frame = ctk.CTkFrame(due_date_frame)
 due_time_frame.pack(side="left", padx=5)
