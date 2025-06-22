@@ -1,0 +1,29 @@
+{
+    "theme": {
+        "background": "dark",
+        "button_color": "blue",
+        "accent_color": "blue",
+        "text_color": "white",
+        "header_color": "blue"
+    },
+    "fonts": {
+        "title": [
+            "Courier",
+            24,
+            "bold"
+        ],
+        "header": [
+            "Courier",
+            14,
+            "bold"
+        ],
+        "task": [
+            "Courier",
+            11
+        ],
+        "button": [
+            "Courier",
+            10
+        ]
+    }
+}

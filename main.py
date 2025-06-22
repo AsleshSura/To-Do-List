@@ -22,6 +22,38 @@ from tkinter import messagebox
 from datetime import datetime
 from tkcalendar import DateEntry
 
+# Add after the existing imports
+import json
+
+# Add these default preferences
+DEFAULT_PREFERENCES = {
+    "theme": {
+        "background": "dark",
+        "button_color": "blue",
+        "accent_color": "orange",
+        "text_color": "white",
+        "header_color": "red"
+    },
+    "fonts": {
+        "title": ("Arial", 24),  # Removed "bold" from tuple
+        "header": ("Arial", 12),
+        "task": ("Arial", 11),
+        "button": ("Arial", 10)
+    }
+}
+
+def load_preferences():
+    try:
+        with open("preferences.txt", "r") as file:
+            return json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        save_preferences(DEFAULT_PREFERENCES)
+        return DEFAULT_PREFERENCES.copy()
+
+def save_preferences(preferences):
+    with open("preferences.txt", "w") as file:
+        json.dump(preferences, file, indent=4)
+
 #File TaskList
 
 def load_tasks():
@@ -48,7 +80,7 @@ def save_tasks():
         for task in tasks:
             due_date = task.get("due_date", "None")
             category = task.get("category", "General")
-            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}||{due_date}||{category}\n")
+            file.write(f"{task['text']}||{task['completed']}||{task['timestamp']}||{task['priority']}||{due_date}||{category}\n")
 
 def load_categories():
     try:
@@ -750,7 +782,160 @@ def display_filtered_tasks(filtered_tasks):
             )
             delete_btn.pack(side="right", padx=5, pady=2)
 
+def open_preferences():
+    pref_window = ctk.CTkToplevel()
+    pref_window.title("Preferences")
+    pref_window.geometry("400x500")
+    pref_window.transient(window)
 
+    current_prefs = load_preferences()
+
+    # Theme section
+    theme_frame = ctk.CTkFrame(pref_window)
+    theme_frame.pack(fill="x", padx=10, pady=5)
+
+    ctk.CTkLabel(theme_frame, text="Theme", font=("Arial", 14, "bold")).pack(pady=5)
+
+    theme_var = ctk.StringVar(value=current_prefs["theme"]["background"])
+    ctk.CTkOptionMenu(
+        theme_frame,
+        values=["dark", "light"],
+        variable=theme_var,
+        width=120
+    ).pack(pady=5)
+
+    # Color section
+    colors_frame = ctk.CTkFrame(pref_window)
+    colors_frame.pack(fill="x", padx=10, pady=5)
+
+    ctk.CTkLabel(colors_frame, text="Colors", font=("Arial", 14, "bold")).pack(pady=5)
+
+    button_color_var = ctk.StringVar(value=current_prefs["theme"]["button_color"])
+    accent_color_var = ctk.StringVar(value=current_prefs["theme"]["accent_color"])
+    
+    color_options = ["blue", "green", "red", "purple", "orange", "teal"]
+    
+    ctk.CTkLabel(colors_frame, text="Button Color:").pack()
+    ctk.CTkOptionMenu(
+        colors_frame,
+        values=color_options,
+        variable=button_color_var,
+        width=120
+    ).pack(pady=5)
+
+    ctk.CTkLabel(colors_frame, text="Accent Color:").pack()
+    ctk.CTkOptionMenu(
+        colors_frame,
+        values=color_options,
+        variable=accent_color_var,
+        width=120
+    ).pack(pady=5)
+
+    # Font section
+    font_frame = ctk.CTkFrame(pref_window)
+    font_frame.pack(fill="x", padx=10, pady=5)
+
+    ctk.CTkLabel(font_frame, text="Fonts", font=("Arial", 14, "bold")).pack(pady=5)
+
+    font_families = ["Arial", "Helvetica", "Times New Roman", "Courier"]
+    font_sizes = ["10", "11", "12", "14", "16", "18", "24"]
+
+    task_font_var = ctk.StringVar(value=current_prefs["fonts"]["task"][0])
+    task_size_var = ctk.StringVar(value=str(current_prefs["fonts"]["task"][1]))
+
+    ctk.CTkLabel(font_frame, text="Task Font:").pack()
+    ctk.CTkOptionMenu(
+        font_frame,
+        values=font_families,
+        variable=task_font_var,
+        width=120
+    ).pack(pady=5)
+
+    ctk.CTkLabel(font_frame, text="Task Font Size:").pack()
+    ctk.CTkOptionMenu(
+        font_frame,
+        values=font_sizes,
+        variable=task_size_var,
+        width=120
+    ).pack(pady=5)
+
+    def save_preferences_and_apply():
+        new_prefs = {
+            "theme": {
+                "background": theme_var.get(),
+                "button_color": button_color_var.get(),
+                "accent_color": accent_color_var.get(),
+                "text_color": "black" if theme_var.get() == "light" else "white",
+                "header_color": accent_color_var.get()
+            },
+            "fonts": {
+                "title": (task_font_var.get(), 24, "bold"),
+                "header": (task_font_var.get(), 14, "bold"),
+                "task": (task_font_var.get(), int(task_size_var.get())),
+                "button": (task_font_var.get(), 10)
+            }
+        }
+        save_preferences(new_prefs)
+        apply_preferences()
+        pref_window.destroy()
+        result_label.configure(text="Preferences saved! Restart app for full effect.", text_color="green")
+
+    save_btn = ctk.CTkButton(
+        pref_window,
+        text="Save",
+        command=save_preferences_and_apply,
+        fg_color="green",
+        hover_color="darkgreen"
+    )
+    save_btn.pack(pady=10)
+
+def apply_preferences():
+    try:
+        prefs = load_preferences()
+        
+        # Apply theme
+        ctk.set_appearance_mode(prefs["theme"]["background"])
+        
+        # Create font objects
+        title_font = ctk.CTkFont(family=prefs["fonts"]["title"][0], size=prefs["fonts"]["title"][1], weight="bold")
+        header_font = ctk.CTkFont(family=prefs["fonts"]["header"][0], size=prefs["fonts"]["header"][1])
+        task_font = ctk.CTkFont(family=prefs["fonts"]["task"][0], size=prefs["fonts"]["task"][1])
+        button_font = ctk.CTkFont(family=prefs["fonts"]["button"][0], size=prefs["fonts"]["button"][1])
+        
+        # Update labels with proper fonts
+        label_mapping = {
+            title_label: title_font,
+            task_label: header_font,
+            display_label: header_font,
+            result_label: task_font,
+            search_label: task_font,
+            filter_label: task_font,
+            category_label: task_font,
+            due_date_label: task_font,
+            instructions: task_font
+        }
+        
+        for widget, font in label_mapping.items():
+            try:
+                widget.configure(font=font)
+            except Exception:
+                continue
+        
+        # Update buttons
+        for widget in button_frame.winfo_children():
+            try:
+                if isinstance(widget, ctk.CTkButton):
+                    widget.configure(font=button_font)
+            except Exception:
+                continue
+        
+        # Update task display
+        update_task_display()
+        
+    except Exception as e:
+        print(f"Error applying preferences: {e}")
+        # Reset to defaults if there's an error
+        save_preferences(DEFAULT_PREFERENCES)
 #Creating a Window
 window = ctk.CTk()
 window.title("My To-Do App")
@@ -976,6 +1161,16 @@ add_button.pack(side="left", padx=5)
 clear_button = ctk.CTkButton(button_frame, text="Clear All Tasks", command=clear_all_tasks, fg_color="red", hover_color="darkred", width=120)
 clear_button.pack(side="left", padx=5)
 
+pref_button = ctk.CTkButton(
+    button_frame, 
+    text="Preferences", 
+    command=open_preferences, 
+    fg_color="teal", 
+    hover_color="darkcyan", 
+    width=120
+)
+pref_button.pack(side="left", padx=5)
+
 reset_button = ctk.CTkButton(
     button_frame, 
     text="Reset All", 
@@ -995,10 +1190,8 @@ display_label = ctk.CTkLabel(window, text="Your Tasks:", font=("Arial", 14, "bol
 display_label.pack(pady=(10,5))
 
 #Scrollable frame for tasks
-scrollable_frame = ctk.CTkScrollableFrame(window, height=200)
-scrollable_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-task_display_frame = scrollable_frame
+task_display_frame = ctk.CTkScrollableFrame(window, height=200)
+task_display_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
 instructions = ctk.CTkLabel(
     window, 
@@ -1015,5 +1208,14 @@ task_entry.bind("<Return>", lambda event: add_task())
 search_entry.bind("<Return>", lambda event: search_tasks())
 
 update_task_display()
+
+# Initialize preferences
+try:
+    preferences = load_preferences()
+    apply_preferences()
+except Exception as e:
+    print(f"Error initializing preferences: {e}")
+    save_preferences(DEFAULT_PREFERENCES)
+
 
 window.mainloop()
