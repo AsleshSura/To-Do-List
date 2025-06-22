@@ -122,6 +122,17 @@ def update_task_display():
                 text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
+            edit_btn = ctk.CTkButton(
+                task_frame,
+                text="Edit",
+                command=lambda idx=tasks.index(task): edit_task(idx),
+                fg_color="blue",
+                hover_color="darkblue",
+                width=70,
+                height=25
+            )
+            edit_btn.pack(side="right", padx=5, pady=2)
+
             delete_btn = ctk.CTkButton(
             task_frame,
             text="Delete",
@@ -189,7 +200,40 @@ def toggle_priority(index):
         save_tasks()
         update_task_display()
 
+def edit_task(index):
+    if 0 <= index < len(tasks):
+        task = tasks[index]
+    
+    edit_window = ctk.CTkToplevel()
+    edit_window.title("Edit Task")
+    edit_window.geometry("400x150")
 
+    edit_window.transient(window)
+
+    edit_entry = ctk.CTkEntry(edit_window, font=("Arial", 12), width = 300)
+    edit_entry.insert(0, task["text"])
+    edit_entry.pack(pady=20)
+
+    def save_edit():
+        new_text = edit_entry.get().strip()
+        if new_text:
+            task["text"] = new_text
+            save_tasks()
+            update_task_display()
+            edit_window.destroy()
+            result_label.configure(text=f"Task edited successfully!", text_color="green")
+    
+    save_btn = ctk.CTkButton(
+        edit_window,
+        text="Save",
+        command=save_edit,
+        fg_color="green",
+        hover_color="darkgreen"
+    )
+    save_btn.pack(pady=10)
+
+    edit_entry.bind("<Return>", lambda event: save_edit())
+    edit_entry.focus_set()
 
 #Creating a Window
 window = ctk.CTk()
@@ -243,4 +287,3 @@ task_entry.bind("<Return>", lambda event: add_task())
 update_task_display()
 
 window.mainloop()
-
