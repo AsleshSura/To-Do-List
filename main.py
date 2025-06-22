@@ -30,13 +30,14 @@ def load_tasks():
             tasks = []
             for line in file:
                 if line.strip():
-                    text, completed, timestamp, priority, due_date = line.strip().split("||")
+                    text, completed, timestamp, priority, due_date, category = line.strip().split("||")
                     tasks.append({
                         "text": text, 
                         "completed": completed == "True", 
                         "timestamp": timestamp,
                         "priority": priority == "True",
-                        "due_date": due_date if due_date != "None" else None
+                        "due_date": due_date if due_date != "None" else None,
+                        "category": category if category != "None" else "General"
                         })
             return tasks
     except FileNotFoundError:
@@ -46,7 +47,23 @@ def save_tasks():
     with open("tasks.txt", "w") as file:
         for task in tasks:
             due_date = task.get("due_date", "None")
-            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}||{due_date}\n")
+            category = task.get("category", "General")
+            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}||{due_date}||{category}\n")
+
+def load_categories():
+    try:
+        with open("categories.txt", "r") as file:
+            categories = ["General"]
+            loaded_cats = [line.strip() for line in file if line.strip()]
+            categories.extend([cat for cat in loaded_cats if cat not in categories])
+            return categories
+    except FileNotFoundError:
+        return ["General"]
+
+def save_categories():
+    with open("categories.txt", "w") as file:
+        for category in categories:
+            file.write(f"{category}\n")
 
 #List of Tasks
 tasks = load_tasks()
@@ -116,7 +133,11 @@ def update_task_display():
             if task["priority"]:
                 task_text = "★ " + task_text
             if task["completed"]:
-                task_text = "✓ " + task_text  
+                task_text = "✓ " + task_text
+            
+            if task.get("category") and task.get("category") != "General":
+                category_badge = f" [{task.get("category")}]"
+                task_text += category_badge
 
             task_label = ctk.CTkLabel(
                 task_frame, 
@@ -126,6 +147,9 @@ def update_task_display():
                 text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
+
+
+            #Due Date
             due_text = ""
             if task.get("due_date"):
                 if " " in task["due_date"]:
@@ -142,7 +166,6 @@ def update_task_display():
                 text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
             
             due_label.pack(side="left", padx =5, pady=2)
-
 
             edit_btn = ctk.CTkButton(
                 task_frame,
@@ -164,7 +187,6 @@ def update_task_display():
             width=70, 
             height=25)
             delete_btn.pack(side="right", padx=5, pady=2)
-
 
 def add_task():
     task_text = task_entry.get()
@@ -188,14 +210,18 @@ def add_task():
                 due_date = f"{date_str} {hour:02d}:{minute:02d}"
             else:
                 due_date = date_str
-
-        tasks.append({
+        new_category = category_var.get()
+        task_dict = {
             "text": task_text.strip(),
             "completed": False,
             "timestamp": timestamp,
             "priority": False,
-            "due_date": due_date
-            })
+            "due_date": due_date,
+            }
+        if new_category != "General":
+            task_dict["category"] = new_category
+        tasks.append(task_dict)
+
         save_tasks()
         #Removes the text from the field
         task_entry.delete(0, len(task_text))
@@ -254,12 +280,25 @@ def edit_task(index):
     
     edit_window = ctk.CTkToplevel()
     edit_window.title("Edit Task")
-    edit_window.geometry("400x150")
+    edit_window.geometry("400x250")
     edit_window.transient(window)
 
     edit_entry = ctk.CTkEntry(edit_window, font=("Arial", 12), width = 300)
     edit_entry.insert(0, task["text"])
     edit_entry.pack(pady=20)
+
+    category_frame = ctk.CTkFrame(edit_window)
+    category_frame.pack(pady=5)
+
+    edit_category_var = ctk.StringVar(value=task.get("category", "General"))
+    category_menu = ctk.CTkOptionMenu(
+        category_frame,
+        values=categories,
+        variable=edit_category_var,
+        width=120
+    )
+    category_menu.pack(side="left", padx=5)
+
 
     due_time_frame = ctk.CTkFrame(edit_window)
     due_time_frame.pack(pady=10)
@@ -286,6 +325,13 @@ def edit_task(index):
         new_text = edit_entry.get().strip()
         if new_text:
             task["text"] = new_text
+            new_category = edit_category_var.get()
+
+            if new_category == "General":
+                task.pop("category", None)
+            else:
+                task["category"] = new_category
+
             if task.get("due_date"):
                 date_part = task["due_date"].split()[0]
                 hour = int(hour_var.get())
@@ -302,6 +348,8 @@ def edit_task(index):
             edit_window.destroy()
             result_label.configure(text=f"Task edited successfully!", text_color="green")
     
+    
+
     save_btn = ctk.CTkButton(
         edit_window,
         text="Save",
@@ -313,6 +361,23 @@ def edit_task(index):
 
     edit_entry.bind("<Return>", lambda event: save_edit())
     edit_entry.focus_set()
+
+def add_new_category():
+    dialog = ctk.CTkInputDialog(
+        text="Enter new category name:",
+        title="Add Category"
+    )
+
+    new_category = dialog.get_input()
+
+    if new_category and new_category.strip():
+        new_category = new_category.strip()
+        if new_category not in categories:
+            categories.append(new_category)
+            category_menu.configure(values=categories)
+            category_var.set(new_category)
+            save_categories()
+            result_label.configure(text=f"Added new category: {new_category}", text_color="green")
 
 #Creating a Window
 window = ctk.CTk()
@@ -382,6 +447,35 @@ ampm_menu = ctk.CTkOptionMenu(
     width=60
 )
 ampm_menu.pack(side="left", padx=5)
+
+category_frame = ctk.CTkFrame(input_frame)
+category_frame.pack(pady=5)
+
+category_label = ctk.CTkLabel(category_frame, text="Category:", font=("Arial", 10))
+category_label.pack(side="left", padx=5)
+
+categories = load_categories()
+category_var = ctk.StringVar(value="General")
+
+category_menu = ctk.CTkOptionMenu(
+    category_frame,
+    values=categories,
+    variable=category_var,
+    width=120
+)
+category_menu.pack(side="left", padx=5)
+
+add_category_btn = ctk.CTkButton(
+    category_frame,
+    text="Add new Category",
+    width=30,
+    command=add_new_category,
+    fg_color="green",
+    hover_color="darkgreen"
+)
+add_category_btn.pack(side="left", padx=5)
+
+
 
 #Buttons Frame
 button_frame = ctk.CTkFrame(input_frame)
