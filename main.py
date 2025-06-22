@@ -16,7 +16,7 @@ Template:
 - Uses a simple text file to store tasks.
 - Uses Python's built-in libraries.
 """
-
+from tkcalendar import DateEntry 
 import customtkinter as ctk
 from tkinter import messagebox
 from datetime import datetime
@@ -29,12 +29,13 @@ def load_tasks():
             tasks = []
             for line in file:
                 if line.strip():
-                    text, completed, timestamp, priority = line.strip().split("||")
+                    text, completed, timestamp, priority, due_date = line.strip().split("||")
                     tasks.append({
                         "text": text, 
                         "completed": completed == "True", 
                         "timestamp": timestamp,
-                        "priority": priority == "True"
+                        "priority": priority == "True",
+                        "due_date": due_date if due_date != "None" else None
                         })
             return tasks
     except FileNotFoundError:
@@ -43,7 +44,7 @@ def load_tasks():
 def save_tasks():
     with open("tasks.txt", "w") as file:
         for task in tasks:
-            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}\n")
+            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}||{task["due_date"]}\n")
 
 #List of Tasks
 tasks = load_tasks()
@@ -109,6 +110,8 @@ def update_task_display():
 
             task_time = task["timestamp"].split()[1]
             task_text = f"{task_time} - {task["text"]}"
+            if task.get("due_date"):
+                task_text += f" (Due: {task['due_date']})"
             if task["priority"]:
                 task_text = "★ " + task_text
             if task["completed"]:
@@ -148,25 +151,82 @@ def add_task(): #Adds task to the list "tasks"
     task_text = task_entry.get()
 
     #Checks if task_entry has text
-    if task_text.strip(): 
-        #Add to the Tasks List
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        tasks.append({
-            "text": task_text.strip(),
-            "completed": False,
-            "timestamp": timestamp,
-            "priority": False
-            })
-        save_tasks()
-        #Removes the text from the field
-        task_entry.delete(0, len(task_text))
+    if task_text.strip():
+        due_date_window = ctk.CTkToplevel(window)
+        due_date_window.title("Set Due Date")
+        due_date_window.geometry("400x250")
+        due_date_window.transient(window)
 
-        update_task_display()
+        due_date_window.grab_set()
 
-        #Changes the text in the Result Label
-        result_label.configure(text=f"Added: '{task_text}' | Total Tasks: {len(tasks)}", text_color="green")
+        x = window.winfo_x() + (window.winfo_width()-400) //2
+        y = window.winfo_y() + (window.winfo_height-250)//2
+        due_date_window.geometry(f"400x250+{x}+{y}")
 
-    else: #If has no text
+        due_date_label = ctk.CTkLabel(
+            due_date_window, 
+            text="(Optional) Set Due Date:", 
+            font=("Arial, 12"))
+        due_date_label.pack(pady=10)
+
+        date_picker = DateEntry(
+            due_date_window, 
+            width=12, 
+            background="darkblue", 
+            foreground="white", 
+            borderswidth = 2)
+        date_picker.pack(pady=10, padx=10)
+
+        def save_task(with_due_date=True):
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+            
+            if with_due_date:
+                due_date = date_picker.get_date().strftime("%Y-%m-%d") if with_due_date else None
+            else:
+                due_date = None
+
+            tasks.append({
+                "text": task_text.strip(),
+                "completed": False,
+                "timestamp": timestamp,
+                "priority": False,
+                "due_date": due_date
+                })
+            
+            save_tasks()
+            task_entry.delete(0, len(task_text))
+            update_task_display()
+            due_date_window.destroy()
+
+            result_text = f"Added task with due date: P {due_date}" if with_due_date else "Added task without due date"
+            result_label.configure(text=result_text, text_color="green")
+
+        def close_window():
+            due_date_window.grab_release()
+            due_date_window.destroy()
+
+        button_frame1 = ctk.CTkFrame(due_date_window)
+        button_frame1.pack(pady=20)
+
+        add_with_date = ctk.CTkButton(
+            button_frame1,
+            text="Add with Due Date",
+            command=lambda: save_task(True),
+            fg_color="green",
+            hover_color="darkgreen"
+        )
+        add_with_date.pack(side="left", padx=5)
+
+        add_without_date = ctk.CTkButton(
+            button_frame1,
+            text="Add without Due Date",
+            command=lambda: save_task(False),
+            fg_color="gray",
+            hover_color="darkgray"
+        )
+        add_without_date.pack(side="left", padx=5)
+        
+    else:
         result_label.configure(text="Please enter a task first!", text_color="red")
 
 def delete_task(index):
