@@ -1,0 +1,42 @@
+{
+    "theme": {
+        "background": "dark",
+        "button_color": "blue",
+        "priority_color": "orange",
+        "complete_color": "green",
+        "delete_color": "red",
+        "edit_color": "blue",
+        "accent_color": "orange",
+        "text_color": "white",
+        "header_color": "red"
+    },
+    "fonts": {
+        "title": [
+            "Arial",
+            24
+        ],
+        "header": [
+            "Arial",
+            12
+        ],
+        "task": [
+            "Arial",
+            11
+        ],
+        "button": [
+            "Arial",
+            10
+        ],
+        "label": [
+            "Arial",
+            10
+        ]
+    },
+    "sizes": {
+        "window": "600x600",
+        "button_width": 120,
+        "entry_width": 300,
+        "icon_width": 30,
+        "icon_height": 25
+    }
+}

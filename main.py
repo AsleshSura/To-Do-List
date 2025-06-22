@@ -30,15 +30,27 @@ DEFAULT_PREFERENCES = {
     "theme": {
         "background": "dark",
         "button_color": "blue",
+        "priority_color": "orange",
+        "complete_color": "green",
+        "delete_color": "red",
+        "edit_color": "blue",
         "accent_color": "orange",
         "text_color": "white",
         "header_color": "red"
     },
     "fonts": {
-        "title": ("Arial", 24),  # Removed "bold" from tuple
+        "title": ("Arial", 24),
         "header": ("Arial", 12),
         "task": ("Arial", 11),
-        "button": ("Arial", 10)
+        "button": ("Arial", 10),
+        "label": ("Arial", 10)
+    },
+    "sizes": {
+        "window": "600x600",
+        "button_width": 120,
+        "entry_width": 300,
+        "icon_width": 30,
+        "icon_height": 25
     }
 }
 
@@ -161,14 +173,13 @@ def update_task_display():
 
             task_time = task["timestamp"].split()[1]
             task_text = f"{task_time} - {task['text']}"
-            
             if task["priority"]:
                 task_text = "★ " + task_text
             if task["completed"]:
                 task_text = "✓ " + task_text
             
             if task.get("category") and task.get("category") != "General":
-                category_badge = f" [{task.get("category")}]"
+                category_badge = f" [{task.get('category')}]"
                 task_text += category_badge
 
             task_label = ctk.CTkLabel(
@@ -179,16 +190,24 @@ def update_task_display():
                 text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
-
-
             #Due Date
             due_text = ""
             if task.get("due_date"):
                 if " " in task["due_date"]:
                     date_part, time_part = task["due_date"].split()
-                    due_text = f"(Due: {date_part} at {time_part})"
+                    # Check if it's today's date
+                    today = datetime.now().strftime('%m-%d-%y')
+                    if date_part == today:
+                        due_text = f"(Due: Today at {time_part})"
+                    else:
+                        due_text = f"(Due: {date_part} at {time_part})"
                 else:
-                    due_text += f"Due: {task["due_date"]}"
+                    # Date only
+                    today = datetime.now().strftime('%m-%d-%y')
+                    if task["due_date"] == today:
+                        due_text = "(Due: Today)"
+                    else:
+                        due_text = f"(Due: {task['due_date']})"
 
             due_label = ctk.CTkLabel(
                 task_frame,
@@ -211,13 +230,13 @@ def update_task_display():
             edit_btn.pack(side="right", padx=5, pady=2)
 
             delete_btn = ctk.CTkButton(
-            task_frame,
-            text="Delete",
-            command=lambda idx=i-1: delete_task(idx), 
-            fg_color="red", 
-            hover_color="darkred", 
-            width=70, 
-            height=25)
+                task_frame,
+                text="Delete",
+                command=lambda idx=tasks.index(task): delete_task(idx), 
+                fg_color="red", 
+                hover_color="darkred", 
+                width=70, 
+                height=25)
             delete_btn.pack(side="right", padx=5, pady=2)
 
 def add_task():
@@ -228,12 +247,23 @@ def add_task():
         #Add to the Tasks List
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         due_date = None
-        if due_date_picker.get() != "":  # Only process date if something is selected
+        
+        # Check if date is selected
+        has_date = due_date_picker.get() != ""
+        # Check if time is selected (all time fields must be set)
+        has_time = all(var.get() != "-" for var in [hour_var, min_var, ampm_var])
+        
+        if has_date or has_time:
             try:
-                date_str = due_date_picker.get_date().strftime('%m-%d-%y')
+                # If date is provided, use it; otherwise use current date
+                if has_date:
+                    date_str = due_date_picker.get_date().strftime('%m-%d-%y')
+                else:
+                    # Use current date when only time is provided
+                    date_str = datetime.now().strftime('%m-%d-%y')
                 
-                # Only process time if all time fields are set
-                if all(var.get() != "-" for var in [hour_var, min_var, ampm_var]):
+                # If time is provided, add it to the date
+                if has_time:
                     hour = int(hour_var.get())
                     minute = int(min_var.get())
                     
@@ -243,7 +273,8 @@ def add_task():
                         hour = 0
                     due_date = f"{date_str} {hour:02d}:{minute:02d}"
                 else:
-                    due_date = date_str
+                    # Date only
+                    due_date = date_str            
             except (ValueError, AttributeError):
                 pass  
             
@@ -254,7 +285,7 @@ def add_task():
             "timestamp": timestamp,
             "priority": False,
             "due_date": due_date,
-            }
+        }
         if new_category != "General":
             task_dict["category"] = new_category
         tasks.append(task_dict)
@@ -272,7 +303,12 @@ def add_task():
         #Changes the text in the Result Label
         result_text = f"Added: '{task_text}'"
         if due_date:
-            result_text += f" | Due: {due_date}"
+            if has_date and has_time:
+                result_text += f" | Due: {due_date}"
+            elif has_time:
+                result_text += f" | Due: Today at {due_date.split()[1]}"
+            else:
+                result_text += f" | Due: {due_date}"
         result_text += f" | Total Tasks: {len(tasks)}"
 
         result_label.configure(text=result_text, text_color="green")
@@ -286,7 +322,7 @@ def delete_task(index):
         deleted_task = tasks.pop(index)
         save_tasks()
         update_task_display()
-        result_label.configure(text=f"Deleted : '{deleted_task["text"]}'", text_color="orange")
+        result_label.configure(text=f"Deleted : '{deleted_task['text']}'", text_color="orange")
 
 def toggle_completed(index):
     if 0 <= index < len(tasks):
@@ -327,8 +363,6 @@ def edit_task(index):
     category_frame = ctk.CTkFrame(edit_window)
     category_frame.pack(pady=5)
 
-    min_var = ctk.StringVar(value="00")
-
     edit_category_var = ctk.StringVar(value=task.get("category", "General"))
     category_menu = ctk.CTkOptionMenu(
         category_frame,
@@ -337,7 +371,6 @@ def edit_task(index):
         width=120
     )
     category_menu.pack(side="left", padx=5)
-
 
     due_time_frame = ctk.CTkFrame(edit_window)
     due_time_frame.pack(pady=10)
@@ -350,6 +383,15 @@ def edit_task(index):
         width=60
     )
     hour_menu.pack(side="left", padx=5)
+
+    min_var = ctk.StringVar(value="00")
+    min_menu = ctk.CTkOptionMenu(
+        due_time_frame,
+        values=[f"{i:02d}" for i in range(0,60,5)],
+        variable=min_var,
+        width=60
+    )
+    min_menu.pack(side="left", padx=5)
 
     ampm_var = ctk.StringVar(value="PM")
     ampm_menu = ctk.CTkOptionMenu(
@@ -589,9 +631,19 @@ def search_tasks():
             if task.get("due_date"):
                 if " " in task["due_date"]:
                     date_part, time_part = task["due_date"].split()
-                    due_text = f"(Due: {date_part} at {time_part})"
+                    # Check if it's today's date
+                    today = datetime.now().strftime('%m-%d-%y')
+                    if date_part == today:
+                        due_text = f"(Due: Today at {time_part})"
+                    else:
+                        due_text = f"(Due: {date_part} at {time_part})"
                 else:
-                    due_text = f"(Due: {task['due_date']})"
+                    # Date only
+                    today = datetime.now().strftime('%m-%d-%y')
+                    if task["due_date"] == today:
+                        due_text = "(Due: Today)"
+                    else:
+                        due_text = f"(Due: {task['due_date']})"
 
             due_label = ctk.CTkLabel(
                 task_frame,
@@ -746,9 +798,19 @@ def display_filtered_tasks(filtered_tasks):
             if task.get("due_date"):
                 if " " in task["due_date"]:
                     date_part, time_part = task["due_date"].split()
-                    due_text = f"(Due: {date_part} at {time_part})"
+                    # Check if it's today's date
+                    today = datetime.now().strftime('%m-%d-%y')
+                    if date_part == today:
+                        due_text = f"(Due: Today at {time_part})"
+                    else:
+                        due_text = f"(Due: {date_part} at {time_part})"
                 else:
-                    due_text = f"(Due: {task['due_date']})"
+                    # Date only
+                    today = datetime.now().strftime('%m-%d-%y')
+                    if task["due_date"] == today:
+                        due_text = "(Due: Today)"
+                    else:
+                        due_text = f"(Due: {task['due_date']})"
 
             due_label = ctk.CTkLabel(
                 task_frame,
@@ -785,109 +847,255 @@ def display_filtered_tasks(filtered_tasks):
 def open_preferences():
     pref_window = ctk.CTkToplevel()
     pref_window.title("Preferences")
-    pref_window.geometry("400x500")
+    pref_window.geometry("500x650")
     pref_window.transient(window)
 
     current_prefs = load_preferences()
 
-    # Theme section
-    theme_frame = ctk.CTkFrame(pref_window)
-    theme_frame.pack(fill="x", padx=10, pady=5)
+    # Create main scrollable frame
+    main_scroll = ctk.CTkScrollableFrame(pref_window, height=580)
+    main_scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-    ctk.CTkLabel(theme_frame, text="Theme", font=("Arial", 14, "bold")).pack(pady=5)
+    # Title
+    title_label = ctk.CTkLabel(main_scroll, text="Application Preferences", 
+                              font=("Arial", 18, "bold"))
+    title_label.pack(pady=(0, 20))
+
+    # Theme Section
+    theme_frame = ctk.CTkFrame(main_scroll)
+    theme_frame.pack(fill="x", pady=(0, 15))
+
+    ctk.CTkLabel(theme_frame, text="🎨 Appearance", 
+                font=("Arial", 14, "bold")).pack(pady=(10, 5))
 
     theme_var = ctk.StringVar(value=current_prefs["theme"]["background"])
+    ctk.CTkLabel(theme_frame, text="Theme Mode:").pack(pady=(5, 0))
     ctk.CTkOptionMenu(
         theme_frame,
-        values=["dark", "light"],
+        values=["dark", "light", "system"],
         variable=theme_var,
-        width=120
-    ).pack(pady=5)
+        width=150
+    ).pack(pady=(0, 10))
 
-    # Color section
-    colors_frame = ctk.CTkFrame(pref_window)
-    colors_frame.pack(fill="x", padx=10, pady=5)
+    # Color Customization Section
+    colors_frame = ctk.CTkFrame(main_scroll)
+    colors_frame.pack(fill="x", pady=(0, 15))
 
-    ctk.CTkLabel(colors_frame, text="Colors", font=("Arial", 14, "bold")).pack(pady=5)
+    ctk.CTkLabel(colors_frame, text="🎯 Color Scheme", 
+                font=("Arial", 14, "bold")).pack(pady=(10, 5))
 
-    button_color_var = ctk.StringVar(value=current_prefs["theme"]["button_color"])
-    accent_color_var = ctk.StringVar(value=current_prefs["theme"]["accent_color"])
-    
     color_options = ["blue", "green", "red", "purple", "orange", "teal"]
     
-    ctk.CTkLabel(colors_frame, text="Button Color:").pack()
-    ctk.CTkOptionMenu(
-        colors_frame,
-        values=color_options,
-        variable=button_color_var,
-        width=120
-    ).pack(pady=5)
+    # Create color variables
+    color_vars = {
+        "Button Color": ctk.StringVar(value=current_prefs["theme"]["button_color"]),
+        "Priority Color": ctk.StringVar(value=current_prefs["theme"]["priority_color"]),
+        "Complete Color": ctk.StringVar(value=current_prefs["theme"]["complete_color"]),
+        "Delete Color": ctk.StringVar(value=current_prefs["theme"]["delete_color"]),
+        "Edit Color": ctk.StringVar(value=current_prefs["theme"]["edit_color"]),
+        "Accent Color": ctk.StringVar(value=current_prefs["theme"]["accent_color"])
+    }
 
-    ctk.CTkLabel(colors_frame, text="Accent Color:").pack()
-    ctk.CTkOptionMenu(
-        colors_frame,
-        values=color_options,
-        variable=accent_color_var,
-        width=120
-    ).pack(pady=5)
+    # Create color selection grid
+    color_grid = ctk.CTkFrame(colors_frame)
+    color_grid.pack(pady=10, padx=10, fill="x")
 
-    # Font section
-    font_frame = ctk.CTkFrame(pref_window)
-    font_frame.pack(fill="x", padx=10, pady=5)
+    for i, (label, var) in enumerate(color_vars.items()):
+        row = i // 2
+        col = i % 2
+        
+        color_subframe = ctk.CTkFrame(color_grid)
+        color_subframe.grid(row=row, column=col, padx=10, pady=5, sticky="ew")
+        
+        ctk.CTkLabel(color_subframe, text=label, font=("Arial", 10)).pack(pady=2)
+        ctk.CTkOptionMenu(
+            color_subframe,
+            values=color_options,
+            variable=var,
+            width=120
+        ).pack(pady=(0, 5))
 
-    ctk.CTkLabel(font_frame, text="Fonts", font=("Arial", 14, "bold")).pack(pady=5)
+    # Configure grid weights
+    for i in range(2):
+        color_grid.columnconfigure(i, weight=1)
 
-    font_families = ["Arial", "Helvetica", "Times New Roman", "Courier"]
-    font_sizes = ["10", "11", "12", "14", "16", "18", "24"]
+    # Font Section
+    font_frame = ctk.CTkFrame(main_scroll)
+    font_frame.pack(fill="x", pady=(0, 15))
+
+    ctk.CTkLabel(font_frame, text="📝 Typography", 
+                font=("Arial", 14, "bold")).pack(pady=(10, 5))
+
+    font_families = ["Arial", "Helvetica", "Times New Roman", "Courier", "Calibri"]
+    font_sizes = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24"]
 
     task_font_var = ctk.StringVar(value=current_prefs["fonts"]["task"][0])
     task_size_var = ctk.StringVar(value=str(current_prefs["fonts"]["task"][1]))
 
-    ctk.CTkLabel(font_frame, text="Task Font:").pack()
+    font_grid = ctk.CTkFrame(font_frame)
+    font_grid.pack(pady=10, padx=10, fill="x")
+
+    # Font family selection
+    font_family_frame = ctk.CTkFrame(font_grid)
+    font_family_frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
+    ctk.CTkLabel(font_family_frame, text="Font Family:", font=("Arial", 10)).pack(pady=2)
     ctk.CTkOptionMenu(
-        font_frame,
+        font_family_frame,
         values=font_families,
         variable=task_font_var,
-        width=120
-    ).pack(pady=5)
+        width=150
+    ).pack(pady=(0, 5))
 
-    ctk.CTkLabel(font_frame, text="Task Font Size:").pack()
+    # Font size selection
+    font_size_frame = ctk.CTkFrame(font_grid)
+    font_size_frame.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+    ctk.CTkLabel(font_size_frame, text="Font Size:", font=("Arial", 10)).pack(pady=2)
     ctk.CTkOptionMenu(
-        font_frame,
+        font_size_frame,
         values=font_sizes,
         variable=task_size_var,
-        width=120
-    ).pack(pady=5)
+        width=150
+    ).pack(pady=(0, 5))
+
+    # Configure font grid weights
+    for i in range(2):
+        font_grid.columnconfigure(i, weight=1)
+
+    # Layout & Sizing Section
+    sizes_frame = ctk.CTkFrame(main_scroll)
+    sizes_frame.pack(fill="x", pady=(0, 15))
+
+    ctk.CTkLabel(sizes_frame, text="📐 Layout & Sizing", 
+                font=("Arial", 14, "bold")).pack(pady=(10, 5))
+
+    window_size_var = ctk.StringVar(value=current_prefs["sizes"]["window"])
+    button_width_var = ctk.StringVar(value=str(current_prefs["sizes"]["button_width"]))
+    entry_width_var = ctk.StringVar(value=str(current_prefs["sizes"]["entry_width"]))
+
+    sizes_grid = ctk.CTkFrame(sizes_frame)
+    sizes_grid.pack(pady=10, padx=10, fill="x")
+
+    size_inputs = [
+        ("Window Size", window_size_var, ["600x600", "700x700", "800x600", "800x800", "1000x800", "1200x900"]),
+        ("Button Width", button_width_var, ["80", "100", "120", "150", "180"]),
+        ("Entry Width", entry_width_var, ["200", "250", "300", "350", "400"])
+    ]
+
+    for i, (label, var, values) in enumerate(size_inputs):
+        size_subframe = ctk.CTkFrame(sizes_grid)
+        size_subframe.grid(row=i//2, column=i%2, padx=10, pady=5, sticky="ew")
+        
+        ctk.CTkLabel(size_subframe, text=label, font=("Arial", 10)).pack(pady=2)
+        ctk.CTkOptionMenu(
+            size_subframe,
+            values=values,
+            variable=var,
+            width=150
+        ).pack(pady=(0, 5))
+
+    # Configure sizes grid weights
+    for i in range(2):
+        sizes_grid.columnconfigure(i, weight=1)
+
+    # Preview Section
+    preview_frame = ctk.CTkFrame(main_scroll)
+    preview_frame.pack(fill="x", pady=(0, 15))
+
+    ctk.CTkLabel(preview_frame, text="👁️ Preview", 
+                font=("Arial", 14, "bold")).pack(pady=(10, 5))
+
+    preview_text = ctk.CTkLabel(
+        preview_frame,
+        text="This is how your tasks will look with the selected font and colors.",
+        font=(task_font_var.get(), int(task_size_var.get())),
+        fg_color="transparent"
+    )
+    preview_text.pack(pady=10)
+
+    # Update preview when font changes
+    def update_preview(*args):
+        try:
+            preview_text.configure(font=(task_font_var.get(), int(task_size_var.get())))
+        except:
+            pass
+
+    task_font_var.trace("w", update_preview)
+    task_size_var.trace("w", update_preview)
+
+    # Action Buttons Frame (fixed at bottom)
+    button_frame = ctk.CTkFrame(pref_window)
+    button_frame.pack(fill="x", padx=10, pady=(0, 10))
 
     def save_preferences_and_apply():
         new_prefs = {
             "theme": {
                 "background": theme_var.get(),
-                "button_color": button_color_var.get(),
-                "accent_color": accent_color_var.get(),
+                "button_color": color_vars["Button Color"].get(),
+                "priority_color": color_vars["Priority Color"].get(),
+                "complete_color": color_vars["Complete Color"].get(),
+                "delete_color": color_vars["Delete Color"].get(),
+                "edit_color": color_vars["Edit Color"].get(),
+                "accent_color": color_vars["Accent Color"].get(),
                 "text_color": "black" if theme_var.get() == "light" else "white",
-                "header_color": accent_color_var.get()
+                "header_color": "red"
             },
             "fonts": {
-                "title": (task_font_var.get(), 24, "bold"),
-                "header": (task_font_var.get(), 14, "bold"),
+                "title": (task_font_var.get(), 24),
+                "header": (task_font_var.get(), 14),
                 "task": (task_font_var.get(), int(task_size_var.get())),
-                "button": (task_font_var.get(), 10)
+                "button": (task_font_var.get(), 10),
+                "label": (task_font_var.get(), 10)
+            },
+            "sizes": {
+                "window": window_size_var.get(),
+                "button_width": int(button_width_var.get()),
+                "entry_width": int(entry_width_var.get()),
+                "icon_width": 30,
+                "icon_height": 25
             }
         }
         save_preferences(new_prefs)
         apply_preferences()
         pref_window.destroy()
-        result_label.configure(text="Preferences saved! Restart app for full effect.", text_color="green")
+        result_label.configure(text="Preferences saved!", text_color="green")
 
+    def reset_to_defaults():
+        if messagebox.askyesno("Reset Preferences", "Reset all preferences to default values?"):
+            save_preferences(DEFAULT_PREFERENCES)
+            apply_preferences()
+            pref_window.destroy()
+            result_label.configure(text="Preferences reset to defaults!", text_color="blue")
+
+    # Action buttons
     save_btn = ctk.CTkButton(
-        pref_window,
-        text="Save",
+        button_frame,
+        text="💾 Save & Apply",
         command=save_preferences_and_apply,
         fg_color="green",
-        hover_color="darkgreen"
+        hover_color="darkgreen",
+        width=150
     )
-    save_btn.pack(pady=10)
+    save_btn.pack(side="left", padx=10, pady=10)
+
+    reset_btn = ctk.CTkButton(
+        button_frame,
+        text="🔄 Reset to Defaults",
+        command=reset_to_defaults,
+        fg_color="orange",
+        hover_color="darkorange",
+        width=150
+    )
+    reset_btn.pack(side="left", padx=10, pady=10)
+
+    cancel_btn = ctk.CTkButton(
+        button_frame,
+        text="❌ Cancel",
+        command=pref_window.destroy,
+        fg_color="gray",
+        hover_color="darkgray",
+        width=150
+    )
+    cancel_btn.pack(side="right", padx=10, pady=10)
 
 def apply_preferences():
     try:
@@ -896,46 +1104,43 @@ def apply_preferences():
         # Apply theme
         ctk.set_appearance_mode(prefs["theme"]["background"])
         
-        # Create font objects
-        title_font = ctk.CTkFont(family=prefs["fonts"]["title"][0], size=prefs["fonts"]["title"][1], weight="bold")
-        header_font = ctk.CTkFont(family=prefs["fonts"]["header"][0], size=prefs["fonts"]["header"][1])
-        task_font = ctk.CTkFont(family=prefs["fonts"]["task"][0], size=prefs["fonts"]["task"][1])
-        button_font = ctk.CTkFont(family=prefs["fonts"]["button"][0], size=prefs["fonts"]["button"][1])
+        # Update window size
+        window.geometry(prefs["sizes"]["window"])
         
-        # Update labels with proper fonts
-        label_mapping = {
-            title_label: title_font,
-            task_label: header_font,
-            display_label: header_font,
-            result_label: task_font,
-            search_label: task_font,
-            filter_label: task_font,
-            category_label: task_font,
-            due_date_label: task_font,
-            instructions: task_font
+        # Create fonts
+        fonts = {
+            key: ctk.CTkFont(family=font[0], size=font[1]) 
+            for key, font in prefs["fonts"].items()
         }
         
-        for widget, font in label_mapping.items():
-            try:
-                widget.configure(font=font)
-            except Exception:
-                continue
+        # Update basic UI elements
+        title_label.configure(font=fonts["title"])
+        task_label.configure(font=fonts["header"])
+        display_label.configure(font=fonts["header"])
+        instructions.configure(font=fonts["label"])
+        result_label.configure(font=fonts["label"])
         
         # Update buttons
-        for widget in button_frame.winfo_children():
-            try:
-                if isinstance(widget, ctk.CTkButton):
-                    widget.configure(font=button_font)
-            except Exception:
-                continue
+        for btn in [add_button, clear_button, pref_button, reset_button]:
+            if btn:
+                btn.configure(
+                    font=fonts["button"],
+                    width=prefs["sizes"]["button_width"]
+                )
+        
+        # Update entries
+        task_entry.configure(
+            font=fonts["task"],
+            width=prefs["sizes"]["entry_width"]
+        )
         
         # Update task display
         update_task_display()
         
     except Exception as e:
         print(f"Error applying preferences: {e}")
-        # Reset to defaults if there's an error
         save_preferences(DEFAULT_PREFERENCES)
+
 #Creating a Window
 window = ctk.CTk()
 window.title("My To-Do App")
@@ -1207,15 +1412,15 @@ instructions.pack(pady=10)
 task_entry.bind("<Return>", lambda event: add_task())
 search_entry.bind("<Return>", lambda event: search_tasks())
 
+# Move this code to just before window.mainloop():
 update_task_display()
 
-# Initialize preferences
+# Initialize preferences last
+preferences = load_preferences()
 try:
-    preferences = load_preferences()
     apply_preferences()
 except Exception as e:
     print(f"Error initializing preferences: {e}")
     save_preferences(DEFAULT_PREFERENCES)
-
 
 window.mainloop()

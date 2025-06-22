@@ -1,1 +1,19 @@
-heyy||False||2025-06-22 07:26||False||None||General
+heyy||True||2025-06-22 07:57||True||None||General
+ewfef||True||2025-06-22 07:57||True||06-24-25 23:00||efewfa
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+2||False||2025-06-22 08:05||False||None||General
+g||False||2025-06-22 08:05||False||None||General
+g||False||2025-06-22 08:05||False||None||General
+g||False||2025-06-22 08:06||False||None||General
+g||False||2025-06-22 08:06||False||None||General
+g||False||2025-06-22 08:06||False||None||General
