@@ -29,8 +29,13 @@ def load_tasks():
             tasks = []
             for line in file:
                 if line.strip():
-                    text, completed, timestamp = line.strip().split("||")
-                    tasks.append({"text": text, "completed": completed == "True", "timestamp": timestamp})
+                    text, completed, timestamp, priority = line.strip().split("||")
+                    tasks.append({
+                        "text": text, 
+                        "completed": completed == "True", 
+                        "timestamp": timestamp,
+                        "priority": priority == "True"
+                        })
             return tasks
     except FileNotFoundError:
         return []
@@ -38,7 +43,7 @@ def load_tasks():
 def save_tasks():
     with open("tasks.txt", "w") as file:
         for task in tasks:
-            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}\n")
+            file.write(f"{task['text']}||{task['completed']}||{task["timestamp"]}||{task["priority"]}\n")
 
 #List of Tasks
 tasks = load_tasks()
@@ -74,14 +79,28 @@ def update_task_display():
         date_label = ctk.CTkLabel(date_frame, text=date_str, font=("Arial", 12, "bold"), fg_color="red", corner_radius=6)
         date_label.pack(fill="x", padx=5, pady=5)
         
+        date_tasks = tasks_by_date[date]
+        date_tasks.sort(key=lambda x: (not x["priority"], x["timestamp"]))
+
         for i, task in enumerate(tasks_by_date[date], 1):
             task_frame = ctk.CTkFrame(task_display_frame)
             task_frame.pack(fill="x", padx=5, pady=2)
 
+            priority_btn = ctk.CTkButton(
+                task_frame,
+                text="★" if task["priority"] else "☆",
+                command=lambda idx=tasks.index(task): toggle_priority(idx),
+                fg_color="orange" if task["priority"] else "gray",
+                hover_color="darkorange" if task["priority"] else "gray",
+                width=30,
+                height=25
+            )
+            priority_btn.pack(side="left", padx=2)
+
             complete_btn = ctk.CTkButton(
                 task_frame, 
                 text="✓" if task["completed"] else "o", 
-                command=lambda idx=i-1: is_completed(idx), 
+                command=lambda idx=tasks.index(task): toggle_completed(idx), 
                 fg_color="green" if task["completed"] else "gray", 
                 hover_color="darkgreen" if task["completed"] else "darkgray", 
                 width=30, 
@@ -90,6 +109,8 @@ def update_task_display():
 
             task_time = task["timestamp"].split()[1]
             task_text = f"{task_time} - {task["text"]}"
+            if task["priority"]:
+                task_text = "★ " + task_text
             if task["completed"]:
                 task_text = "✓ " + task_text  
 
@@ -98,7 +119,7 @@ def update_task_display():
                 text=f"{i}. {task["text"]}", 
                 font=("Arial", 11), 
                 anchor="w", 
-                text_color="gray" if task["completed"] else "white")
+                text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white"))
             task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
 
             delete_btn = ctk.CTkButton(
@@ -122,7 +143,8 @@ def add_task(): #Adds task to the list "tasks"
         tasks.append({
             "text": task_text.strip(),
             "completed": False,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "priority": False
             })
         save_tasks()
         #Removes the text from the field
@@ -144,7 +166,7 @@ def delete_task(index):
         update_task_display()
         result_label.configure(text=f"Deleted : '{deleted_task["text"]}'", text_color="orange")
 
-def is_completed(index):
+def toggle_completed(index):
     if 0 <= index < len(tasks):
         tasks[index]["completed"] = not tasks[index]["completed"]
         save_tasks()
@@ -160,6 +182,14 @@ def clear_all_tasks():
             result_label.configure(text="All tasks cleared!", text_color="blue")
     else:
         result_label.configure(text="No tasks to clear!", text_color="gray")
+
+def toggle_priority(index):
+    if 0 <= index < len(tasks):
+        tasks[index]["priority"] = not tasks[index]["priority"]
+        save_tasks()
+        update_task_display()
+
+
 
 #Creating a Window
 window = ctk.CTk()
