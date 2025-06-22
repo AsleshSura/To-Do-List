@@ -128,7 +128,7 @@ def update_task_display():
             complete_btn.pack(side="left", padx=5)
 
             task_time = task["timestamp"].split()[1]
-            task_text = f"{task_time} - {task["text"]}"
+            task_text = f"{task_time} - {task['text']}"
             
             if task["priority"]:
                 task_text = "★ " + task_text
@@ -295,6 +295,8 @@ def edit_task(index):
     category_frame = ctk.CTkFrame(edit_window)
     category_frame.pack(pady=5)
 
+    min_var = ctk.StringVar(value="00")
+
     edit_category_var = ctk.StringVar(value=task.get("category", "General"))
     category_menu = ctk.CTkOptionMenu(
         category_frame,
@@ -380,6 +382,7 @@ def add_new_category():
         if new_category not in categories:
             categories.append(new_category)
             category_menu.configure(values=categories)
+            category_filter_menu.configure(values=["All"] + categories)
             category_var.set(new_category)
             save_categories()
             result_label.configure(text=f"Added new category: {new_category}", text_color="green")
@@ -410,6 +413,7 @@ def remove_category():
             
             categories.remove(category_to_remove)
             category_menu.configure(values=categories)
+            category_filter_menu.configure(values=["All"] + categories)
             category_var.set("General")
             save_categories()
             save_tasks()
@@ -431,6 +435,8 @@ def reset_all():
         categories.append("General")
         save_categories()
         
+        category_filter_menu.configure(values=["All", "General"])
+
         # Reset UI elements
         category_menu.configure(values=categories)
         category_var.set("General")
@@ -477,10 +483,272 @@ def search_tasks():
 
     # Display filtered tasks grouped by date
     for date in sorted(filtered_tasks.keys(), reverse=True):
-        # ...rest of the display logic same as update_task_display...
         date_frame = ctk.CTkFrame(task_display_frame)
         date_frame.pack(fill="x", padx=5, pady=(10,2))
-        # ...continue with existing display code...
+
+        date_obj = datetime.now().strptime(date, "%Y-%m-%d")
+        date_str = date_obj.strftime("%B %d, %Y")
+
+        date_label = ctk.CTkLabel(
+            date_frame, 
+            text=date_str, 
+            font=("Arial", 12, "bold"), 
+            fg_color="red", 
+            corner_radius=6
+        )
+        date_label.pack(fill="x", padx=5, pady=5)
+        
+        date_tasks = filtered_tasks[date]
+        date_tasks.sort(key=lambda x: (not x["priority"], x["timestamp"]))
+
+        for i, task in enumerate(date_tasks, 1):
+            task_frame = ctk.CTkFrame(task_display_frame)
+            task_frame.pack(fill="x", padx=5, pady=2)
+
+            # Add priority button
+            priority_btn = ctk.CTkButton(
+                task_frame,
+                text="★" if task["priority"] else "☆",
+                command=lambda idx=tasks.index(task): toggle_priority(idx),
+                fg_color="orange" if task["priority"] else "gray",
+                hover_color="darkorange" if task["priority"] else "gray",
+                width=30,
+                height=25
+            )
+            priority_btn.pack(side="left", padx=2)
+
+            # Add complete button
+            complete_btn = ctk.CTkButton(
+                task_frame, 
+                text="✓" if task["completed"] else "o", 
+                command=lambda idx=tasks.index(task): toggle_completed(idx), 
+                fg_color="green" if task["completed"] else "gray", 
+                hover_color="darkgreen" if task["completed"] else "darkgray", 
+                width=30, 
+                height=25
+            )
+            complete_btn.pack(side="left", padx=5)
+
+            # Format task text
+            task_time = task["timestamp"].split()[1]
+            task_text = f"{task_time} - {task['text']}"
+            
+            if task["priority"]:
+                task_text = "★ " + task_text
+            if task["completed"]:
+                task_text = "✓ " + task_text
+            
+            if task.get("category") and task.get("category") != "General":
+                category_badge = f" [{task.get('category')}]"
+                task_text += category_badge
+
+            # Add task label
+            task_label = ctk.CTkLabel(
+                task_frame, 
+                text=task_text, 
+                font=("Arial", 11), 
+                anchor="w", 
+                text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white")
+            )
+            task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
+
+            # Add due date label
+            due_text = ""
+            if task.get("due_date"):
+                if " " in task["due_date"]:
+                    date_part, time_part = task["due_date"].split()
+                    due_text = f"(Due: {date_part} at {time_part})"
+                else:
+                    due_text = f"(Due: {task['due_date']})"
+
+            due_label = ctk.CTkLabel(
+                task_frame,
+                text=due_text,
+                font=("Arial", 11),
+                anchor="e",
+                text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white")
+            )
+            due_label.pack(side="left", padx=5, pady=2)
+
+            # Add edit and delete buttons
+            edit_btn = ctk.CTkButton(
+                task_frame,
+                text="Edit",
+                command=lambda idx=tasks.index(task): edit_task(idx),
+                fg_color="blue",
+                hover_color="darkblue",
+                width=70,
+                height=25
+            )
+            edit_btn.pack(side="right", padx=5, pady=2)
+
+            delete_btn = ctk.CTkButton(
+                task_frame,
+                text="Delete",
+                command=lambda idx=tasks.index(task): delete_task(idx),
+                fg_color="red",
+                hover_color="darkred",
+                width=70,
+                height=25
+            )
+            delete_btn.pack(side="right", padx=5, pady=2)
+
+# Add before the window creation:
+
+def apply_filters():
+    filtered_tasks = tasks.copy()
+    
+    # Priority filter
+    if priority_var.get() == "Priority Only":
+        filtered_tasks = [task for task in filtered_tasks if task["priority"]]
+    elif priority_var.get() == "Non-Priority":
+        filtered_tasks = [task for task in filtered_tasks if not task["priority"]]
+    
+    # Status filter
+    if status_var.get() == "Completed":
+        filtered_tasks = [task for task in filtered_tasks if task["completed"]]
+    elif status_var.get() == "Pending":
+        filtered_tasks = [task for task in filtered_tasks if not task["completed"]]
+    
+    # Category filter
+    if category_filter_var.get() != "All":
+        filtered_tasks = [task for task in filtered_tasks if task.get("category", "General") == category_filter_var.get()]
+    
+    # Update display with filtered tasks
+    display_filtered_tasks(filtered_tasks)
+
+def reset_filters():
+    priority_var.set("All")
+    status_var.set("All")
+    category_filter_var.set("All")
+    update_task_display()
+
+def display_filtered_tasks(filtered_tasks):
+    for widget in task_display_frame.winfo_children():
+        widget.destroy()
+
+    if not filtered_tasks:
+        no_tasks_label = ctk.CTkLabel(task_display_frame, text="No matching tasks!", font=("Arial", 12))
+        no_tasks_label.pack(pady=20)
+        return
+    
+    # Group tasks by date
+    tasks_by_date = {}
+    for task in filtered_tasks:
+        date = task["timestamp"].split()[0]
+        if date not in tasks_by_date:
+            tasks_by_date[date] = []
+        tasks_by_date[date].append(task)
+    
+    for date in sorted(tasks_by_date.keys(), reverse=True):
+        date_frame = ctk.CTkFrame(task_display_frame)
+        date_frame.pack(fill="x", padx=5, pady=(10,2))
+
+        date_obj = datetime.now().strptime(date, "%Y-%m-%d")
+        date_str = date_obj.strftime("%B %d, %Y")
+
+        date_label = ctk.CTkLabel(
+            date_frame, 
+            text=date_str, 
+            font=("Arial", 12, "bold"), 
+            fg_color="red", 
+            corner_radius=6
+        )
+        date_label.pack(fill="x", padx=5, pady=5)
+        
+        date_tasks = tasks_by_date[date]
+        date_tasks.sort(key=lambda x: (not x["priority"], x["timestamp"]))
+
+        for i, task in enumerate(date_tasks, 1):
+            task_frame = ctk.CTkFrame(task_display_frame)
+            task_frame.pack(fill="x", padx=5, pady=2)
+
+            # Add priority button
+            priority_btn = ctk.CTkButton(
+                task_frame,
+                text="★" if task["priority"] else "☆",
+                command=lambda idx=tasks.index(task): toggle_priority(idx),
+                fg_color="orange" if task["priority"] else "gray",
+                hover_color="darkorange" if task["priority"] else "gray",
+                width=30,
+                height=25
+            )
+            priority_btn.pack(side="left", padx=2)
+
+            # Add complete button
+            complete_btn = ctk.CTkButton(
+                task_frame, 
+                text="✓" if task["completed"] else "o", 
+                command=lambda idx=tasks.index(task): toggle_completed(idx), 
+                fg_color="green" if task["completed"] else "gray", 
+                hover_color="darkgreen" if task["completed"] else "darkgray", 
+                width=30, 
+                height=25
+            )
+            complete_btn.pack(side="left", padx=5)
+
+            # Format task text
+            task_time = task["timestamp"].split()[1]
+            task_text = f"{task_time} - {task['text']}"
+            
+            if task["priority"]:
+                task_text = "★ " + task_text
+            if task["completed"]:
+                task_text = "✓ " + task_text
+            
+            if task.get("category") and task.get("category") != "General":
+                category_badge = f" [{task.get('category')}]"
+                task_text += category_badge
+
+            task_label = ctk.CTkLabel(
+                task_frame, 
+                text=task_text, 
+                font=("Arial", 11), 
+                anchor="w", 
+                text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white")
+            )
+            task_label.pack(side="left", fill="x", expand=True, padx=10, pady=5)
+
+            # Add due date label
+            due_text = ""
+            if task.get("due_date"):
+                if " " in task["due_date"]:
+                    date_part, time_part = task["due_date"].split()
+                    due_text = f"(Due: {date_part} at {time_part})"
+                else:
+                    due_text = f"(Due: {task['due_date']})"
+
+            due_label = ctk.CTkLabel(
+                task_frame,
+                text=due_text,
+                font=("Arial", 11),
+                anchor="e",
+                text_color="orange" if task["priority"] else ("gray" if task["completed"] else "white")
+            )
+            due_label.pack(side="left", padx=5, pady=2)
+
+            # Add buttons
+            edit_btn = ctk.CTkButton(
+                task_frame,
+                text="Edit",
+                command=lambda idx=tasks.index(task): edit_task(idx),
+                fg_color="blue",
+                hover_color="darkblue",
+                width=70,
+                height=25
+            )
+            edit_btn.pack(side="right", padx=5, pady=2)
+
+            delete_btn = ctk.CTkButton(
+                task_frame,
+                text="Delete",
+                command=lambda idx=tasks.index(task): delete_task(idx),
+                fg_color="red",
+                hover_color="darkred",
+                width=70,
+                height=25
+            )
+            delete_btn.pack(side="right", padx=5, pady=2)
 
 
 #Creating a Window
@@ -520,6 +788,60 @@ clear_search_btn = ctk.CTkButton(
     width=70
 )
 clear_search_btn.pack(side="left", padx=5)
+
+# Add after search_frame and before input_frame:
+
+filter_frame = ctk.CTkFrame(window)
+filter_frame.pack(fill="x", padx=10, pady=5)
+
+# Filter options
+filter_label = ctk.CTkLabel(filter_frame, text="Filters:", font=("Arial", 12))
+filter_label.pack(side="left", padx=5)
+
+# Priority filter
+priority_var = ctk.StringVar(value="All")
+priority_menu = ctk.CTkOptionMenu(
+    filter_frame,
+    values=["All", "Priority Only", "Non-Priority"],
+    variable=priority_var,
+    width=120,
+    command=lambda _: apply_filters()
+)
+priority_menu.pack(side="left", padx=5)
+
+# Status filter
+status_var = ctk.StringVar(value="All")
+status_menu = ctk.CTkOptionMenu(
+    filter_frame,
+    values=["All", "Completed", "Pending"],
+    variable=status_var,
+    width=120,
+    command=lambda _: apply_filters()
+)
+status_menu.pack(side="left", padx=5)
+
+# Category filter
+category_filter_var = ctk.StringVar(value="All")
+category_filter_menu = ctk.CTkOptionMenu(
+    filter_frame,
+    values=["All"] + load_categories(),
+    variable=category_filter_var,
+    width=120,
+    command=lambda _: apply_filters()
+)
+category_filter_menu.pack(side="left", padx=5)
+
+# Clear filters button
+clear_filters_btn = ctk.CTkButton(
+    filter_frame,
+    text="Clear Filters",
+    command=lambda: reset_filters(),
+    fg_color="gray",
+    hover_color="darkgray",
+    width=100
+)
+clear_filters_btn.pack(side="left", padx=5)
+
 
 #Input Frame
 input_frame = ctk.CTkFrame(window)
