@@ -379,6 +379,42 @@ def add_new_category():
             save_categories()
             result_label.configure(text=f"Added new category: {new_category}", text_color="green")
 
+def remove_category():
+    # Don't allow removing "General" category
+    removable_categories = [cat for cat in categories if cat != "General"]
+    if not removable_categories:
+        result_label.configure(text="No custom categories to remove!", text_color="red")
+        return
+
+    dialog = ctk.CTkInputDialog(
+        text="Select category number to remove:\n" + 
+             "\n".join(f"{i+1}. {cat}" for i, cat in enumerate(removable_categories)),
+        title="Remove Category"
+    )
+    
+    choice = dialog.get_input()
+    
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(removable_categories):
+            category_to_remove = removable_categories[idx]
+            # Update tasks with this category to "General"
+            for task in tasks:
+                if task.get("category") == category_to_remove:
+                    task.pop("category", None)
+            
+            categories.remove(category_to_remove)
+            category_menu.configure(values=categories)
+            category_var.set("General")
+            save_categories()
+            save_tasks()
+            update_task_display()
+            result_label.configure(text=f"Removed category: {category_to_remove}", text_color="orange")
+        else:
+            result_label.configure(text="Invalid category number!", text_color="red")
+    except (ValueError, TypeError):
+        result_label.configure(text="Please enter a valid number!", text_color="red")
+
 #Creating a Window
 window = ctk.CTk()
 window.title("My To-Do App")
@@ -476,6 +512,15 @@ add_category_btn = ctk.CTkButton(
 add_category_btn.pack(side="left", padx=5)
 
 
+remove_category_btn = ctk.CTkButton(
+    category_frame,
+    text="Remove Category",
+    width=30,
+    command=remove_category,
+    fg_color="red",
+    hover_color="darkred"
+)
+remove_category_btn.pack(side="left", padx=5)
 
 #Buttons Frame
 button_frame = ctk.CTkFrame(input_frame)
