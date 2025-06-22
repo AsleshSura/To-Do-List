@@ -20,8 +20,22 @@ Template:
 import customtkinter as ctk
 from tkinter import messagebox
 
+#File TaskList
+
+def load_tasks():
+    try:
+        with open("tasks.txt", "r") as file:
+            return [line.strip() for line in file if line.strip()]
+    except FileNotFoundError:
+        return []
+
+def save_tasks():
+    with open("tasks.txt", "w") as file:
+        for task in tasks:
+            file.write(f"{task}\n")
+
 #List of Tasks
-tasks = []
+tasks = load_tasks()
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -52,7 +66,7 @@ def add_task(): #Adds task to the list "tasks"
     if task_text.strip(): 
         #Add to the Tasks List
         tasks.append(task_text.strip())
-
+        save_tasks()
         #Removes the text from the field
         task_entry.delete(0, len(task_text))
 
@@ -68,6 +82,7 @@ def delete_task(index):
 
     if 0 <= index < len(tasks):
         deleted_task = tasks.pop(index)
+        save_tasks()
         update_task_display()
         result_label.configure(text=f"Deleted : '{deleted_task}'", text_color="orange")
 
@@ -76,6 +91,7 @@ def clear_all_tasks():
     if tasks:
         if messagebox.askyesno("Clear All", "Are you sure you want to delete all tasks?"):
             tasks.clear()
+            save_tasks()
             update_task_display()
             result_label.configure(text="All tasks cleared!", text_color="blue")
     else:
@@ -133,3 +149,4 @@ task_entry.bind("<Return>", lambda event: add_task())
 update_task_display()
 
 window.mainloop()
+
