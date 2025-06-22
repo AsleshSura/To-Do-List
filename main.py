@@ -113,7 +113,11 @@ def update_task_display():
             task_time = task["timestamp"].split()[1]
             task_text = f"{task_time} - {task["text"]}"
             if task.get("due_date"):
-                task_text += f" (Due: {task["due_date"]})"
+                if " " in task["due_date"]:
+                    date_part, time_part = task["due_date"].split()
+                    task_text += f" (Due: {date_part} at {time_part})"
+                else:
+                    task_text += f" Due: {task["due_date"]}"
             if task["priority"]:
                 task_text = "★ " + task_text
             if task["completed"]:
@@ -158,7 +162,16 @@ def add_task():
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         due_date = None
         if due_date_picker.get() != "":
-            due_date = due_date_picker.get_date().strftime("%m-%d-%y")
+            date_str = due_date_picker.get_date().strftime('%m-%d-%y')
+
+            if hour_var.get() !="12" or ampm_var.get() != "PM":
+                hour = int(hour_var.get())                
+                if ampm_var.get() == "PM" and hour != 12:
+                    hour += 12
+                elif ampm_var.get() == "AM" and hour == 12:
+                    hour = 0
+            due_date = f"{selected_date.strftime('%m-%d-%y')} {hour:02d}:00"
+        
         tasks.append({
             "text": task_text.strip(),
             "completed": False,
@@ -170,6 +183,8 @@ def add_task():
         #Removes the text from the field
         task_entry.delete(0, len(task_text))
         due_date_picker.delete(0, "end")
+        hour_var.set("-")
+        ampm_var.set("-")
 
         update_task_display()
 
@@ -177,7 +192,7 @@ def add_task():
         result_text = f"Added: '{task_text}'"
         if due_date:
             result_text += f" | Due: {due_date}"
-        result_text += " | Total Tasks: {len(tasks)}"
+        result_text += f" | Total Tasks: {len(tasks)}"
 
         result_label.configure(text=result_text, text_color="green")
 
@@ -222,17 +237,45 @@ def edit_task(index):
     edit_window = ctk.CTkToplevel()
     edit_window.title("Edit Task")
     edit_window.geometry("400x150")
-
     edit_window.transient(window)
 
     edit_entry = ctk.CTkEntry(edit_window, font=("Arial", 12), width = 300)
     edit_entry.insert(0, task["text"])
     edit_entry.pack(pady=20)
 
+    due_time_frame = ctk.CTkFrame(edit_window)
+    due_time_frame.pack(pady=10)
+
+    hour_var = ctk.StringVar(value="12")
+    hour_menu = ctk.CTkOptionMenu(
+        due_time_frame,
+        values=[f"{i:02d}" for i in range(1,13)],
+        variable=hour_var,
+        width=60
+    )
+    hour_menu.pack(side="left", padx=5)
+
+    ampm_var = ctk.StringVar(value="PM")
+    ampm_menu = ctk.CTkOptionMenu(
+        due_time_frame,
+        values=["AM", "PM"],
+        variable=ampm_var,
+        width=60
+    )
+    ampm_menu.pack(side="left", padx=5)
+
     def save_edit():
         new_text = edit_entry.get().strip()
         if new_text:
             task["text"] = new_text
+            if task.get("due_date"):
+                date_part = task["due_date"].split()[0]
+                hour = int(hour_var.get())
+                if ampm_var.get() == "PM" and hour != 12:
+                    hour += 12
+                elif ampm_var.get() == "AM" and hour == 12:
+                    hour = 0
+                task["due_date"] = f"{date_part} {hour:02d}:00"
             save_tasks()
             update_task_display()
             edit_window.destroy()
@@ -288,6 +331,27 @@ due_date_picker = DateEntry(
 due_date_picker.delete(0,"end")
 
 due_date_picker.pack(side="left", padx=5)
+
+due_time_frame = ctk.CTkFrame(due_date_frame)
+due_time_frame.pack(side="left", padx=5)
+
+hour_var = ctk.StringVar(value="-")
+hour_menu = ctk.CTkOptionMenu(
+    due_time_frame,
+    values= ["-"] + [f"{i:02d}" for i in range(1,13)],
+    variable=hour_var,
+    width=60
+)
+hour_menu.pack(side="left")
+
+ampm_var = ctk.StringVar(value="-")
+ampm_menu = ctk.CTkOptionMenu(
+    due_time_frame,
+    values=["-", "AM", "PM"],
+    variable=ampm_var,
+    width=60
+)
+ampm_menu.pack(side="left", padx=5)
 
 #Buttons Frame
 button_frame = ctk.CTkFrame(input_frame)
